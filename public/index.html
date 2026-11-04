@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Verified Project Record — Aunova Technologies</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">AUNOVA <span>TECHNOLOGIES</span></div>
+  <div class="tag">Verified Project Record &middot; Meta Global AI Developer Hackathon</div>
+</header>
+
+<main>
+  <section class="hero">
+    <div>
+      <h1 id="project-name">Harbor View Tower</h1>
+      <p class="sub" id="project-meta"></p>
+      <p class="synthetic">Synthetic demo data. No real project, developer, or document. Built for the hackathon only.</p>
+    </div>
+    <div class="progress-box">
+      <div class="progress-label"><span>Structural progress</span><b id="progress-pct">—</b></div>
+      <div class="bar"><div class="fill" id="progress-fill"></div></div>
+      <p class="progress-note" id="progress-note"></p>
+    </div>
+  </section>
+
+  <section class="controls">
+    <div class="roles" role="group" aria-label="View as">
+      <span class="roles-label">View as:</span>
+      <button data-role="public">Public</button>
+      <button data-role="buyer" class="active">Buyer</button>
+      <button data-role="auditor">Auditor</button>
+    </div>
+    <div class="pills">
+      <span class="pill" id="chain-pill">Checking record…</span>
+      <span class="pill" id="engine-pill">Engine: …</span>
+    </div>
+    <div class="actions">
+      <button id="btn-verify">Re-verify</button>
+      <button id="btn-tamper" class="danger">Tamper with entry 3</button>
+      <button id="btn-reset">Reset demo</button>
+    </div>
+  </section>
+
+  <div id="tamper-banner" class="banner hidden"></div>
+
+  <section class="pipeline">
+    <div class="step"><span class="num">1</span><b>Extract</b><p>Muse Spark reads each document into structured fields.</p></div>
+    <div class="arrow">&rarr;</div>
+    <div class="step"><span class="num">2</span><b>Verify</b><p>Every field is checked against its source line before it enters the record.</p></div>
+    <div class="arrow">&rarr;</div>
+    <div class="step"><span class="num">3</span><b>Sign</b><p>Each entry is hash-chained to the last and signed. Edits break the chain.</p></div>
+    <div class="arrow">&rarr;</div>
+    <div class="step"><span class="num">4</span><b>Anchor</b><p>The head hash is timestamped, so the record is provable later.</p></div>
+  </section>
+
+  <div class="grid">
+    <section class="record">
+      <h2>The record <span class="count" id="entry-count"></span></h2>
+      <div id="entries"></div>
+      <div class="anchor" id="anchor-box"></div>
+    </section>
+
+    <aside class="side">
+      <section class="card">
+        <h2>Ask the project</h2>
+        <p class="hint">Answers come only from the signed record, cited per entry. Anything outside it is refused, not guessed.</p>
+        <div class="ask-row">
+          <input id="ask-input" type="text" placeholder="e.g. How far along is construction?" maxlength="500">
+          <button id="btn-ask">Ask</button>
+        </div>
+        <div class="chips">
+          <button data-q="How far along is construction?">Progress?</button>
+          <button data-q="How much has been certified for payment?">Payments?</button>
+          <button data-q="Is the crane up?">Crane?</button>
+          <button data-q="What is the next milestone?">Next milestone?</button>
+          <button data-q="Is the concrete sustainable?">Sustainability?</button>
+        </div>
+        <div id="answer" class="answer hidden"></div>
+      </section>
+
+      <section class="card">
+        <h2>Source documents</h2>
+        <div class="doc-tabs" id="doc-tabs"></div>
+        <ol class="doc-lines" id="doc-lines"></ol>
+        <div class="extract">
+          <button id="btn-extract">Run AI extraction on this document</button>
+          <div id="extract-out"></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Signing key</h2>
+        <p class="hint">ECDSA P-256, generated fresh on each server start (demo). Production uses a persistent developer key.</p>
+        <pre class="mono" id="pubkey"></pre>
+      </section>
+    </aside>
+  </div>
+
+  <footer>
+    Verified Project Record — hackathon demo by Aunova Technologies Ltd (DIFC, Dubai). The record is only as honest as its sources:
+    every field carries its document and line, and verification is one click, any time.
+  </footer>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>
