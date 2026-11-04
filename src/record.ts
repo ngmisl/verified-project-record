@@ -65,9 +65,12 @@ export interface RecordState {
 }
 
 export async function buildRecord(): Promise<RecordState> {
+  assertLineRoles(DOCS, SEED_ENTRIES);
+  // Private key is non-extractable: it can sign, never leave the
+  // process. The public key is always exportable for verifiers.
   const keypair = await crypto.subtle.generateKey(
     { name: "ECDSA", namedCurve: "P-256" },
-    true,
+    false,
     ["sign", "verify"],
   );
   const publicJwk = await crypto.subtle.exportKey("jwk", keypair.publicKey);
@@ -140,9 +143,9 @@ export async function verifyRecord(state: RecordState): Promise<VerifyResult> {
   return { valid, anchorMatch: headHash === state.anchorHead, headHash, entries: rows };
 }
 
-/** Demo-only tamper: change a money figure in entry 3's stored copy
- *  without re-hashing or re-signing, exactly what a forged edit looks
- *  like. The next verify names entry 3. */
+/** Demo-only tamper: change the progress figure in entry 3's stored
+ *  copy without re-hashing or re-signing, exactly what a forged edit
+ *  looks like. The next verify names entry 3. */
 export function tamperRecord(state: RecordState): { seq: number; field: string; from: string; to: string } | null {
   const target = state.entries.find((e) => e.seq === 3);
   if (!target || state.tampered) return null;
@@ -157,10 +160,52 @@ export function filterForRole(entry: Entry, role: Role): Entry {
   return { ...entry, fields: entry.fields.filter((f) => f.roles.includes(role)) };
 }
 
+function lineVisible(doc: SourceDoc, line: number, role: Role): boolean {
+  const allowed = doc.lineRoles?.[line];
+  return !allowed || allowed.includes(role);
+}
+
+/** Refuses to boot if a source line is readable by a role that one of
+ *  the fields it backs hides from, since the document viewer would
+ *  then leak what the field filter withholds. The error lists every
+ *  violating line.
+ */
+export function assertLineRoles(docs: SourceDoc[], entries: EntryInput[]): void {
+  const leaks: string[] = [];
+  for (const e of entries) {
+    for (const f of e.fields) {
+      const doc = docs.find((d) => d.id === f.doc);
+      if (!doc || f.line < 1 || f.line > doc.lines.length) {
+        leaks.push(`ENTRY-${e.seq} "${f.label}" cites missing ${f.doc} line ${f.line}`);
+        continue;
+      }
+      for (const role of ["public", "buyer", "auditor"] as Role[]) {
+        if (!f.roles.includes(role) && lineVisible(doc, f.line, role)) {
+          leaks.push(`${f.doc} line ${f.line} is visible to ${role} but backs ENTRY-${e.seq} "${f.label}" (roles ${f.roles.join("/")})`);
+        }
+      }
+    }
+  }
+  if (leaks.length) throw new Error(`source-line roles leak restricted fields:\n  ${leaks.join("\n  ")}`);
+}
+
+/** Source documents as the role may read them: lines it may not see
+ *  are replaced by a redaction marker, so line numbers still match. */
+export function docsForRole(role: Role): SourceDoc[] {
+  return DOCS.map((d) => ({
+    id: d.id,
+    title: d.title,
+    kind: d.kind,
+    date: d.date,
+    lines: d.lines.map((l, i) => (lineVisible(d, i + 1, role) ? l : `[redacted: not visible to the ${role} role]`)),
+  }));
+}
+
 export function projectView(state: RecordState, role: Role) {
+  const { contractValue, ...publicProject } = PROJECT;
   return {
-    project: PROJECT,
-    docs: DOCS as SourceDoc[],
+    project: role === "public" ? publicProject : PROJECT,
+    docs: docsForRole(role),
     role,
     publicKey: state.publicJwk,
     anchor: {

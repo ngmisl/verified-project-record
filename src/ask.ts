@@ -4,9 +4,9 @@
 // before the engine sees the data: the engine only ever receives
 // fields the caller's role may see.
 
-import { DOCS, type Role } from "./seed.ts";
+import type { Role } from "./seed.ts";
 import { chatCompletion, metaEnabled } from "./meta.ts";
-import { filterForRole, type Entry } from "./record.ts";
+import { docsForRole, filterForRole, type Entry } from "./record.ts";
 
 export interface Answer {
   text: string;
@@ -57,10 +57,15 @@ const INTENTS: Intent[] = [
   {
     re: /rebar|steel|deliver|procure|supplier|mill/i,
     run: (entries, role) => {
+      const qty = field(entries, 1, "Quantity (cumulative)");
+      const mill = field(entries, 1, "Mill certificate");
       const supplier = field(entries, 1, "Supplier");
-      const base = `Rebar batch RB-118 totals 1,200 t delivered, with mill certificate MC-4412 on file. Source: ${cite(1)}.`;
       return {
-        text: supplier ? `${base} Supplier: ${supplier}.` : base,
+        text:
+          `Rebar batch ${field(entries, 1, "Batch")} totals ${qty} delivered.` +
+          (mill ? ` Mill certificate ${mill} is on file.` : "") +
+          (supplier ? ` Supplier: ${supplier}.` : "") +
+          ` Source: ${cite(1)}.`,
         citations: [cite(1)],
         engine: "local",
         role,
@@ -70,16 +75,18 @@ const INTENTS: Intent[] = [
   {
     re: /pay|amount|aed|money|cost|instalment|installment|certified amount/i,
     run: (entries, role) => {
-      if (role === "public") {
+      const pct = field(entries, 4, "Certified completion");
+      const cum = field(entries, 4, "Cumulative certified");
+      if (!cum) {
         return {
-          text: "Money figures are not visible to the public role. Certified completion (46%) is public; amounts require buyer or auditor access. Source: ENTRY-4 (restricted fields hidden).",
+          text: `Money figures are not visible to the ${role} role. Certified completion (${pct}) is public; amounts require buyer or auditor access. Source: ${cite(4)} (restricted fields hidden).`,
           citations: [cite(4)],
           engine: "local",
           role,
         };
       }
       return {
-        text: `Payment certificate PC-007 certifies 46% completion: AED 41,400,000 cumulative certified, AED 4,100,000 for October works, and a next instalment of AED 4,500,000 due on the Level 12 slab. Source: ${cite(4)}.`,
+        text: `Payment certificate PC-007 certifies ${pct} completion: ${cum} cumulative certified, ${field(entries, 4, "This certificate")} for October works, and a next instalment of ${field(entries, 4, "Next instalment")}. Source: ${cite(4)}.`,
         citations: [cite(4)],
         engine: "local",
         role,
@@ -89,10 +96,9 @@ const INTENTS: Intent[] = [
   {
     re: /next|milestone|when|due|handover|finish|complete/i,
     run: (entries, role) => {
-      const next = field(entries, 3, "Next milestone");
-      const money = role === "public" ? "" : " The next instalment of AED 4,500,000 falls due on its completion.";
+      const instalment = field(entries, 4, "Next instalment");
       return {
-        text: `Next milestone: ${next ?? "Level 12 slab, due 30 Nov 2026"}.${money} Source: ${cite(3)} and ${cite(4)}.`,
+        text: `Next milestone: ${field(entries, 3, "Next milestone")}.${instalment ? ` Next instalment: ${instalment}.` : ""} Source: ${cite(3)} and ${cite(4)}.`,
         citations: [cite(3), cite(4)],
         engine: "local",
         role,
@@ -101,11 +107,11 @@ const INTENTS: Intent[] = [
   },
   {
     re: /progress|percent|%|far along|how much built|structural/i,
-    run: (entries) => ({
-      text: `Structural progress is 46% as of 28 October 2026 (SPR-014), up from 38% at the end of September. Source: ${cite(3)} and ${cite(2)}.`,
+    run: (entries, role) => ({
+      text: `Structural progress is ${field(entries, 3, "Structural progress")} as of 28 October 2026 (SPR-014), up from ${field(entries, 2, "Structural progress")} at the end of September. Source: ${cite(3)} and ${cite(2)}.`,
       citations: [cite(3), cite(2)],
       engine: "local",
-      role: "buyer",
+      role,
     }),
   },
   {
@@ -147,7 +153,9 @@ export async function ask(question: string, entries: Entry[], role: Role): Promi
     "You answer questions about a construction project ONLY from the signed record below. " +
     "Every factual claim must cite its entry as [ENTRY-n]. If the answer is not in the record, say so and do not guess. " +
     "Never invent numbers, dates, or names. Keep the answer under 80 words. " +
-    `The caller has the ${role} role and only sees the fields listed; do not reveal anything else.`;
+    `The caller has the ${role} role and only sees the fields listed; do not reveal anything else. ` +
+    "Access rules: the public role sees no money figures; buyer and auditor see payment amounts; only auditor sees supplier names. " +
+    "If the question needs a field the caller's role cannot see, say which access it needs instead of saying it is missing.";
   try {
     const text = await chatCompletion([
       { role: "system", content: `${system}\n\nSIGNED RECORD:\n${context}` },
@@ -156,13 +164,16 @@ export async function ask(question: string, entries: Entry[], role: Role): Promi
     const citations = [...new Set([...text.matchAll(/ENTRY-(\d+)/g)].map((m) => `ENTRY-${m[1]}`))];
     return { text: text.trim(), citations, engine: "meta", role };
   } catch (err) {
+    console.error(`ask fell back to the local engine: ${err instanceof Error ? err.message : err}`);
     const fallback = localAnswer(question, visible, role);
     return { ...fallback, engine: "local (meta failed)" };
   }
 }
 
-export function docText(docId: string): string | null {
-  const doc = DOCS.find((d) => d.id === docId);
+/** Numbered document text as the role may read it (restricted lines
+ *  redacted), so the model never sees more than the caller could. */
+export function docText(docId: string, role: Role): string | null {
+  const doc = docsForRole(role).find((d) => d.id === docId);
   if (!doc) return null;
   return doc.lines.map((l, i) => `${i + 1}. ${l}`).join("\n");
 }

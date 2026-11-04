@@ -26,6 +26,10 @@ export interface SourceDoc {
   kind: string;
   date: string;
   lines: string[];
+  /** 1-based line -> roles allowed to read it. Unlisted lines are
+   *  public. A line is never more visible than any field it backs
+   *  (checked at boot by assertLineRoles in record.ts). */
+  lineRoles?: Record<number, Role[]>;
 }
 
 export const PROJECT = {
@@ -56,6 +60,7 @@ export const DOCS: SourceDoc[] = [
       "Rebar delivered in period: 640 t (cumulative 1,200 t, batch RB-118).",
       "Supplier: Emirates Steel. Mill certificate MC-4412 received and filed.",
     ],
+    lineRoles: { 7: ["auditor"] },
   },
   {
     id: "SPR-014",
@@ -84,6 +89,7 @@ export const DOCS: SourceDoc[] = [
       "Next instalment of AED 4,500,000 falls due on completion of the Level 12 slab.",
       "Signed: Independent Certifier, 31 October 2026.",
     ],
+    lineRoles: { 2: ["buyer", "auditor"], 3: ["buyer", "auditor"], 4: ["buyer", "auditor"], 5: ["buyer", "auditor"] },
   },
   {
     id: "CER-022",

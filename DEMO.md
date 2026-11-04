@@ -1,10 +1,11 @@
 # Demo script — 2 minutes, one take
 
 Prerequisites: `bun run server.ts`, browser on http://localhost:3000.
-Optional: `MODEL_API_KEY` set for the live Muse Spark path (check the $150
-credits show as applied under Billing > free credits first, and set a
-Spend Limit notification). The script works identically offline; the
-engine pill says which mode is active.
+Optional: `NANOGPT_API_KEY` (or `MODEL_API_KEY` for the Meta Model API,
+after checking the $150 credits show as applied under Billing > free
+credits and setting a Spend Limit notification) for the live Muse Spark
+path. The script works identically offline; the engine pill says which
+mode is active.
 
 ## 0:00–0:20 — The problem, the record
 
@@ -41,9 +42,9 @@ to ENTRY-4.
 ## 1:20–1:50 — AI extraction
 
 Open source document SPR-014, click **Run AI extraction on this document**.
-With a key: Muse Spark extracts the fields live, and each is checked
-against the verified fixture. Offline: the fixture extraction is shown
-and the note says so.
+With a key: Muse Spark extracts the fields live, and each value is checked
+against the line it cites, then against the signed record. Offline: the
+fixture extraction is shown and the note says so.
 
 ## 1:50–2:00 — Close
 

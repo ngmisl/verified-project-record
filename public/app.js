@@ -63,7 +63,7 @@ function renderPills(verify, mode) {
     pill.className = "pill bad";
   }
   const engine = $("#engine-pill");
-  engine.textContent = mode.enabled ? `Engine: Muse Spark live (${mode.model})` : "Engine: offline demo (no Model API key)";
+  engine.textContent = mode.enabled ? `Engine: Muse Spark live (${mode.model} via ${mode.provider})` : "Engine: offline demo (no model API key)";
 }
 
 function renderBanner(verify, proj) {
@@ -167,10 +167,17 @@ async function ask() {
 async function extract() {
   const out = $("#extract-out");
   out.innerHTML = "Extracting…";
-  const res = await api(`/api/extract/${currentDoc}`, { method: "POST" });
-  const rows = res.fields.map((f) =>
-    `<tr><td>${esc(f.label)}</td><td><b>${esc(f.value)}</b></td><td>line ${f.line}</td><td class="${f.matched ? "match" : "nomatch"}">${f.matched ? "✓ matches fixture" : "— new value"}</td></tr>`
-  ).join("");
+  const res = await api(`/api/extract/${encodeURIComponent(currentDoc)}?role=${role}`, { method: "POST" });
+  const STATUS = {
+    match: ["match", "✓ matches signed record"],
+    differs: ["nomatch", "✗ differs from record"],
+    extra: ["extra", "· not in record"],
+    ungrounded: ["nomatch", "✗ not on cited line"],
+  };
+  const rows = res.fields.map((f) => {
+    const [cls, label] = STATUS[f.status] ?? STATUS.ungrounded;
+    return `<tr><td>${esc(f.label)}</td><td><b>${esc(f.value)}</b></td><td>line ${Number(f.line)}</td><td class="${cls}">${label}</td></tr>`;
+  }).join("");
   out.innerHTML = `<table class="extract-table">${rows}</table><p class="extract-note">${esc(res.note || "")}</p>`;
 }
 
